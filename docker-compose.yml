@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  ldp_server:
+#    build: .
+    image: markw/ldp_server_2026:1.0.0
+#    container_name: ldp_server
+    ports:
+      - "8890:8890"
+      - "1111:1111"
+    environment:
+      DBA_PASSWORD: dba
+      # Optional overrides for memory tuning (uncomment/adjust if needed)
+      #VIRT_Parameters_NumberOfBuffers: 1000000
+      #VIRT_Parameters_MaxDirtyBuffers: 750000
+      #VIRT_Parameters_MaxCheckpointRemap: 250000
+    volumes:
+      - ./database:/database
+    restart: unless-stopped
+#    healthcheck:
+#      test: ["CMD", "curl", "-f", "http://localhost:8890/about/html/"]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 5
+#      start_period: 90s  # Gives extra time for first-run VAD install
+

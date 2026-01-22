@@ -1,0 +1,74 @@
+# Official, actively maintained Virtuoso Open Source image (7.2.6+ builds as of 2025/2026)
+FROM openlink/virtuoso-opensource-7:latest
+
+# Conservative memory tuning for reliable container runs (adjust/override as needed)
+ENV VIRT_Parameters_NumberOfBuffers=400000 \
+    VIRT_Parameters_MaxDirtyBuffers=300000 \
+    VIRT_Parameters_MaxCheckpointRemap=100000
+
+
+# Change from /vad to /database/vad (allowed by default ini)
+
+
+# Update 01-install-vads.sql to new path
+# Create directories for VADs and init scripts
+# Use a known-allowed VAD directory (../vad relative to database is whitelisted in ini)
+
+RUN mkdir -p /opt/virtuoso-opensource/vad
+
+COPY *.vad /opt/virtuoso-opensource/vad/  
+
+RUN cat <<'EOF' > /initdb.d/01-install-vads.sql
+registry_set('vad_install_verbose', '1');
+
+vad_install('/opt/virtuoso-opensource/vad/ods_framework_dav.vad', 0);
+vad_install('/opt/virtuoso-opensource/vad/ods_briefcase_dav.vad', 0);
+
+checkpoint;
+EOF
+
+
+# ... (your FROM, ENV tuning, mkdir /vad /initdb.d /database, COPY VADs, 01-install-vads.sql)
+
+# 02: Create the 'ldp' user with WebDAV type and necessary SPARQL grants
+# (matches your screenshot: WebDAV user, selected grants like SPARQL_SELECT, SPARQL_SPONGE, etc.)
+RUN cat <<'EOF' > /initdb.d/02-create-ldp-user.sql
+-- Create WebDAV-enabled user (matches your screenshot)
+USER_CREATE ('ldp', 'ldp', vector('disabled', 0));
+
+-- Enable DAV for the user (core setting)
+UPDATE DB.DBA.SYS_USERS SET U_DAV_ENABLE = 1 WHERE U_NAME = 'ldp';
+
+-- Grant SPARQL permissions from screenshot
+GRANT SPARQL_SELECT TO "ldp";
+GRANT SPARQL_SPONGE TO "ldp";
+GRANT SPARQL_LOAD_SERVICE_DATA TO "ldp";
+GRANT SPARQL_SELECT_FED TO "ldp";
+GRANT SPARQL_UPDATE TO "ldp";  
+-- Add if students need writes
+
+checkpoint;
+EOF
+
+# 03: Create /DAV/home/ldp/LDP folder and enable LDP via property
+# (creates collection if missing, sets ownership to 'ldp', enables LDP interaction model)
+
+# Improved 03-setup-ldp-folder.sql — matches your GUI path, better permissions
+RUN cat <<'EOF' > /initdb.d/03-setup-ldp-folder.sql
+-- Create shared LDP collection at root level, owned by 'ldp' for student access
+-- Group 'administrators' for dba management; permissions: owner full, others read/execute, recursive
+DAV_COL_CREATE ('/DAV/LDP/', 'ldp', 'administrators', '110100100R');
+
+-- Enable LDP (exact syntax from official OpenLink docs/examples)
+DAV_PROP_SET ('/DAV/LDP/', 'LDP', 'ldp:BasicContainer', 'ldp', 'administrators', 1);
+
+checkpoint;
+EOF
+
+
+# Expose ports
+EXPOSE 8890 1111
+
+# (Optional: Healthcheck for docker-compose)
+#HEALTHCHECK --interval=30s --timeout=10s --start-period=60s \
+#  CMD curl -f http://localhost:8890/about/ || exit 1
