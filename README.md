@@ -3,9 +3,12 @@
 
 ## Process for building persistent Virtuoso LDP "ready to go out of the box"
 
-Dockerfile_BUILD contains the dockerfile necessary to create a Virtuoso that has the VADs installed, and a basic ldp user.
+Dockerfile_BUILD contains the dockerfile necessary to create a Virtuoso that has the VADs installed, and a basic ldp user.  _*SWITCH Dockerfile to this file now!*_
 
-`docker build -t markw/ldp_server_2026:1.0.0 .`
+```
+cp Dockerfile_BUILD Dockerfile
+docker build -t markw/ldp_server_2026:1.0.0 .
+```
 
 the docker-compose file is fine to use at this point, and will initialize a virtuoso-db in the ./database folder
 
